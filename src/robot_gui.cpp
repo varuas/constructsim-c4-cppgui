@@ -1,19 +1,17 @@
 #include "robot_gui/robot_gui.h"
 #include "robotinfo_msgs/RobotInfo10Fields.h"
+#include "std_srvs/Trigger.h"
 #include <geometry_msgs/Twist.h>
 #include <ros/ros.h>
-#include "std_srvs/Trigger.h"
-#include <iomanip>
-#include <sstream>
 
 RobotGUI::RobotGUI() {
   ros::NodeHandle nh;
-  distance_ = 0.0;
   robot_info_sub = nh.subscribe<robotinfo_msgs::RobotInfo10Fields>(
       "/robot_info", 1, &RobotGUI::robotInfoCallback, this);
   twist_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
   odom_sub = nh.subscribe<nav_msgs::Odometry>("/odom", 2,
                                               &RobotGUI::odomMsgCallback, this);
+  service_client = nh.serviceClient<std_srvs::Trigger>("get_distance");
 }
 
 void RobotGUI::odomMsgCallback(const nav_msgs::Odometry::ConstPtr &msg) {
@@ -27,7 +25,7 @@ void RobotGUI::robotInfoCallback(
 }
 
 void RobotGUI::run() {
-  cv::Mat frame = cv::Mat(800, 300, CV_8UC3);
+  cv::Mat frame = cv::Mat(450, 300, CV_8UC3);
 
   // Init a OpenCV window and tell cvui to use it.
   cv::namedWindow(WINDOW_NAME);
@@ -82,6 +80,26 @@ void RobotGUI::run() {
     cvui::printf(frame, 40, 355, 0.4, 0xff0000, "X=%0.2f, Y=%0.2f, Z=%0.2f",
                  odom_data.pose.pose.position.x, odom_data.pose.pose.position.y,
                  odom_data.pose.pose.position.z);
+
+    // Call Service Button
+    if (cvui::button(frame, 30, 405, "Call")) {
+      // Send the request and wait for a response
+      if (service_client.call(srv_req)) {
+        // Print the response message and return true
+        ROS_INFO("Response message: %s", srv_req.response.message.c_str());
+        // set latest service call status
+        last_service_call_msg = srv_req.response.message;
+      } else {
+        last_service_call_msg = "Service call failed.";
+      }
+    }
+
+    // Display the last response inside the window
+    cvui::window(frame, 130, 390, 150, 40, "Distance in meters:");
+    if (not last_service_call_msg.empty()) {
+      cvui::printf(frame, 145, 415, 0.4, 0xff0000, "%s",
+                   last_service_call_msg.c_str());
+    }
 
     // Update cvui internal stuff
     cvui::update();
