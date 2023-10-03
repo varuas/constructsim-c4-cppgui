@@ -71,6 +71,15 @@ void RobotGUI::run() {
     }
     twist_pub.publish(twist_msg);
 
+    // // Linear Velocity Panel
+    cvui::window(frame, 30, 280, 120, 40, "Linear velocity:");
+    cvui::printf(frame, 40, 300, 0.4, 0xff0000, "%.02f m/sec",
+                 twist_msg.linear.x);
+    // Angular Velocity Panel
+    cvui::window(frame, 160, 280, 120, 40, "Angular velocity:");
+    cvui::printf(frame, 170, 300, 0.4, 0xff0000, "%.02f rad/sec",
+                 twist_msg.angular.z);
+
     // Update cvui internal stuff
     cvui::update();
 
