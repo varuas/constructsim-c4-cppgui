@@ -2,12 +2,22 @@
 #include "robotinfo_msgs/RobotInfo10Fields.h"
 #include <geometry_msgs/Twist.h>
 #include <ros/ros.h>
+#include "std_srvs/Trigger.h"
+#include <iomanip>
+#include <sstream>
 
 RobotGUI::RobotGUI() {
   ros::NodeHandle nh;
+  distance_ = 0.0;
   robot_info_sub = nh.subscribe<robotinfo_msgs::RobotInfo10Fields>(
       "/robot_info", 1, &RobotGUI::robotInfoCallback, this);
   twist_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
+  odom_sub = nh.subscribe<nav_msgs::Odometry>("/odom", 2,
+                                              &RobotGUI::odomMsgCallback, this);
+}
+
+void RobotGUI::odomMsgCallback(const nav_msgs::Odometry::ConstPtr &msg) {
+  odom_data = *msg;
 }
 
 void RobotGUI::robotInfoCallback(
@@ -40,34 +50,20 @@ void RobotGUI::run() {
 
     // Tele-op buttons
     if (cvui::button(frame, 100, 180, " Forward ")) {
-      // The button was clicked, update the Twist message
       twist_msg.linear.x = twist_msg.linear.x + linear_velocity_step;
-      // twist_pub.publish(twist_msg);
     }
-    // Show a button at position x = 100, y = 50
     if (cvui::button(frame, 100, 210, "   Stop  ")) {
-      // The button was clicked, update the Twist message
       twist_msg.linear.x = 0.0;
       twist_msg.angular.z = 0.0;
-      // twist_pub.publish(twist_msg);
     }
-    // Show a button at position x = 30, y = 50
     if (cvui::button(frame, 30, 210, " Left ")) {
-      // The button was clicked, update the Twist message
       twist_msg.angular.z = twist_msg.angular.z + angular_velocity_step;
-      // twist_pub.publish(twist_msg);
     }
-    // Show a button at position x = 195, y = 50
     if (cvui::button(frame, 195, 210, " Right ")) {
-      // The button was clicked, update the Twist message
       twist_msg.angular.z = twist_msg.angular.z - angular_velocity_step;
-      // twist_pub.publish(twist_msg);
     }
-    // Show a button at position x = 100, y = 80
     if (cvui::button(frame, 100, 240, "Backward")) {
-      // The button was clicked,update the Twist message
       twist_msg.linear.x = twist_msg.linear.x - linear_velocity_step;
-      // twist_pub.publish(twist_msg);
     }
     twist_pub.publish(twist_msg);
 
@@ -79,6 +75,13 @@ void RobotGUI::run() {
     cvui::window(frame, 160, 280, 120, 40, "Angular velocity:");
     cvui::printf(frame, 170, 300, 0.4, 0xff0000, "%.02f rad/sec",
                  twist_msg.angular.z);
+
+    // Show Robot Position from Odom Topic
+    cvui::window(frame, 30, 330, 250, 40,
+                 "Estimated robot position (odometery)");
+    cvui::printf(frame, 40, 355, 0.4, 0xff0000, "X=%0.2f, Y=%0.2f, Z=%0.2f",
+                 odom_data.pose.pose.position.x, odom_data.pose.pose.position.y,
+                 odom_data.pose.pose.position.z);
 
     // Update cvui internal stuff
     cvui::update();
